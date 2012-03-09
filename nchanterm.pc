@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+apiversion=0.0
+
+Name: nchanterm
+Description: utf8 vt102 terminal abstraction
+Version: 0.0.0
+
+Libs:   -L${libdir} -lnchanterm
+Cflags: -I${includedir}/nchanterm
