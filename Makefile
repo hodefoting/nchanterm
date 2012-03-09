@@ -6,16 +6,16 @@ PREFIX = /usr/local
 LIBEXT  = so
 TARGETS = $(LIBNAME).a $(LIBNAME).$(LIBEXT)
 
-CFLAGS = -I.. -I. 
+CFLAGS += -I.. -I. 
 CFLAGS += -O2 -g
 CFLAGS += -Wall
 
 all: $(TARGETS)
 
 $(LIBNAME).a: $(OBJS)
-	@echo "  AR" $@;ar rcs $@ $(OBJS)
+	@echo "  AR" $@;$(AR) rcs $@ $(OBJS)
 $(LIBNAME).$(LIBEXT): $(OBJS)
-	@echo "  LD" $@;cc -shared $(OBJS) -o $@ $(FLAGS) $(LIBS)
+	@echo "  LD" $@;$(CC) -shared $(OBJS) -o $@ $(FLAGS) $(LIBS)
 %.o: %.c *.h
 	@echo "  CC" $<;$(CC) -c $(CFLAGS) $< -o $@
 
