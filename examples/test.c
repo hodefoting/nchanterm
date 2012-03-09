@@ -1,4 +1,5 @@
 #include <stdio.h>  /* sprintf */
+#include <string.h>
 
 #define NCHANTERM_HEADER_ONLY
 #include "nchanterm.c"

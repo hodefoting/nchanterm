@@ -1,3 +1,4 @@
+/* see the start of nchanterm.c for the function declarations and API docs */
 
 #ifndef NCHANTERM_H
 

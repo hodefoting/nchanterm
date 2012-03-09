@@ -17,13 +17,14 @@
 
 #ifndef NCHANTERM_H
 #define NCHANTERM_H
-#include <string.h>
-#include <stdlib.h>
 
 typedef struct _Nchanterm Nchanterm;
 
-/* create a new terminal instance */
+/* create a new terminal instance, automatically sized to initial size
+ * of terminal.
+ */
 Nchanterm  *nct_new      (void);
+/* free up a terminal instance */
 void        nct_destroy  (Nchanterm *term);
 /* set the size of the terminal, you need to do this in resize-callbacks */
 void        nct_set_size (Nchanterm *term, int width, int height);
@@ -50,8 +51,8 @@ enum {
   NCT_COLOR_WHITE  = 7
 };
 /* set the foreground/background color used */
-void nct_fg_color (Nchanterm *term, int ncolor);
-void nct_bg_color (Nchanterm *term, int ncolor);
+void nct_fg_color (Nchanterm *term, int color);
+void nct_bg_color (Nchanterm *term, int color);
 
 enum {
   NCT_A_NORMAL     = 0,
@@ -61,8 +62,9 @@ enum {
   NCT_A_REVERSE    = 1 << 3,
 };
 
-/* bitmask for currently set mode */
+/* set the attribute mode, this is a bitmask combination of the above modes. */
 void nct_set_attr            (Nchanterm *term, int attr);
+/* get current attribute mode.  */
 int  nct_get_attr            (Nchanterm *term);
 
 /* update what is visible to the user */
@@ -85,28 +87,45 @@ void nct_set_cursor_pos      (Nchanterm *term, int  x, int  y);
 /* get position of cursor */
 void nct_get_cursor_pos      (Nchanterm *term, int *x, int *y);
 
+/* input handling
+ *   nchanteds input handling reports keyboard, window resizing and mouse
+ *   events in a uniform string based API. UTF8 input is passed through
+ *   as the strings of the glyphs as the event string.
+ *
+ *  "size-changed"   - the geometry of the terminal has changed
+ *  "mouse-pressed"  - the left mouse button was clicked
+ *  "mouse-motion"   - motion events (level of motion event reporting
+ *                    should be configurable)
+ *  "idle"           - timeout elapsed.
+ *  keys: "up" "down" "space" "control-left" "return" "esc" "a" "A"
+ *        "control-a" "F1" "control-c" ...
+ */
+
+/* get an event as a string from the terminal, if it is a mouse event coords
+ * will be returned in x and y if not NULL, block for up to timeout_ms  */
+const char *nct_get_event     (Nchanterm *n, int timeout_ms, int *x, int *y);
+
 /* check if there is pending events, with a timeout */
 int         nct_has_event (Nchanterm *n, int timeout_ms);
 
-/* get an event as a string from the terminal, if it is a mouse event coords
- * will be returned in x and y if not NULL */
-
-const char *nct_get_event     (Nchanterm *n, int timeout_ms, int *x, int *y);
-
 /* get a human readable/suited for ui string representing a keybinding */
 const char *nct_key_get_label (Nchanterm *n, const char *nick);
+
 enum {
   NC_MOUSE_NONE  = 0,
-  NC_MOUSE_PRESS = 1,
-  NC_MOUSE_DRAG  = 2,
-  NC_MOUSE_ALL   = 3
+  NC_MOUSE_PRESS = 1,  /* "mouse-pressed", "mouse-released" */
+  NC_MOUSE_DRAG  = 2,  /* + "mouse-drag"   (motion with pressed button) */
+  NC_MOUSE_ALL   = 3   /* + "mouse-motion" (also delivered for release) */
 };
 /* set which mouse events to report, defaults to report none */
 void nct_mouse           (Nchanterm *term, int nct_mouse_state);
 #endif
 
+/************************** end of header ***********************/
 #ifndef NCHANTERM_HEADER_ONLY
 
+#include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
 #include <locale.h>
@@ -492,19 +511,6 @@ void nct_get_cursor_pos (Nchanterm *n, int *x, int *y)
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
-
-/* input handling
- *   nchanteds input handling reports keyboard, window resizing and mouse
- *   events in a uniform string based API. UTF8 input is passed through
- *   as the strings of the glyphs as the event.
- */
-
-/* "size-changed"   - the geometry of the terminal has changed
- * "mouse-pressed"  - the left mouse button was clicked
- * "mouse-released" - the left mouse button was released
- * "mouse-motion"   - motion events (level of motion event reporting
- *                    should be configurable)
- */
 
 #define DELAY_MS  100  /* internal select timeout for inputs */
 
