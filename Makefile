@@ -6,14 +6,9 @@ PREFIX = /usr/local
 LIBEXT  = so
 TARGETS = $(LIBNAME).a $(LIBNAME).$(LIBEXT)
 
-CFLAGS = -I.. -I. #-fpic -ldl
-LIBS = #-ldl -lpthread #`pkg-config glib-2.0 gio-2.0 --libs`
-CFLAGS += -O3 -g
-CFLAGS += -msse2 -msse -mssse3
+CFLAGS = -I.. -I. 
+CFLAGS += -O2 -g
 CFLAGS += -Wall
-#CFLAGS += -Wall -Wno-unused-value -Wextra
-CFLAGS += -funroll-loops -fforce-addr -ftracer -fpeel-loops -fmerge-all-constants
-#CFLAGS += -fomit-frame-pointer
 
 all: $(TARGETS)
 
