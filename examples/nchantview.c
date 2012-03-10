@@ -10,9 +10,7 @@
 #define NL         do {x = 2; y++;}while(0)
 #define P(string)  do {x += nct_print (term, x, y, string, -1);}while(0)
 
-
 static char *qblocks[]={" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█", NULL};
-
 static char *utf8_gray_scale[]={" ","░","▒","▓","█","█", NULL};
 
 void set_gray (Nchanterm *n, int x, int y, float value)
@@ -50,7 +48,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
     int best_fg = 7;
     int best_bg = 0;
     float best_mix = 1.0;
-    float best_distance = 1.0;
+    float best_distance = 10000000.0;
     int use_geom = 0;
 
 #define POW2(a) ((a)*(a))
@@ -89,11 +87,25 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
         best_bg = tmp;
         best_mix = 1.0-best_mix;
       }
+    if (best_bg == 7 && best_fg == 0)
+      {
+        int tmp = best_fg;
+        best_fg = best_bg;
+        best_bg = tmp;
+        best_mix = 1.0-best_mix;
+      }
+    if (best_bg == 0 && best_mix <= 0.0)
+      {
+        best_fg = 7;
+        best_bg = 0;
+        best_mix = 0;
+      }
 
+    //best_distance = 1000;
   int bestbits = 0;
   {
     int totbits;
-    for (totbits = 0; totbits < 15; totbits++)
+    for (totbits = 0; totbits < 16; totbits++)
         {
           float br[4],bg[4],bb[4];
           int i;
