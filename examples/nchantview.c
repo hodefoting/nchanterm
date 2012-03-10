@@ -10,8 +10,18 @@
 #define NL         do {x = 2; y++;}while(0)
 #define P(string)  do {x += nct_print (term, x, y, string, -1);}while(0)
 
-static char *qblocks[]={" ", "▘", "▝", "▀", "▖", "▌", "▞", "▛", "▗", "▚", "▐", "▜", "▄", "▙", "▟", "█", NULL};
+#if 1
+static char *quarter_blocks[]=
+  {" ","▘","▝","▀","▖","▌","▞","▛","▗","▚","▐","▜","▄","▙","▟","█",NULL};
 static char *utf8_gray_scale[]={" ","░","▒","▓","█","█", NULL};
+#else
+static char *quarter_blocks[]=
+  {" ","'","`","~",",","B","/","P",".","\\","C","q","m","b","d","M",NULL};
+static char *utf8_gray_scale[]={" ","^","X","W","%","M", NULL};
+#endif
+
+float rowerror[2000][3];
+float error[3];
 
 void set_gray (Nchanterm *n, int x, int y, float value)
 {
@@ -28,7 +38,8 @@ void set_gray (Nchanterm *n, int x, int y, float value)
  * output pixel.
  */
 static void draw_rgb_cell (Nchanterm *n, int x, int y,
-                           float r[4], float g[4], float b[4])
+                           float r[4], float g[4], float b[4],
+                           int dither, float crispness)
 {
   float sum[3] = {0,0,0};
   int i;
@@ -37,6 +48,16 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
       sum[0] += r[i]/4;
       sum[1] += g[i]/4;
       sum[2] += b[i]/4;
+    }
+  if (dither)
+    {
+      int i;
+      for (i = 0; i < 3; i++)
+        {
+          sum[i]+=error[i];
+          sum[i]+=rowerror[x][i];
+          rowerror[x][i]=0;
+        }
     }
   {
     /* go through all fg/bg combinations with all color mixtures and
@@ -49,6 +70,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
     int best_bg = 0;
     float best_mix = 1.0;
     float best_distance = 10000000.0;
+    float best_rgb[3];
     int use_geom = 0;
 
 #define POW2(a) ((a)*(a))
@@ -74,12 +96,18 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                              POW2(resrgb[2] - sum[2]));
             if (distance < best_distance)
               {
+                int i;
                 best_distance = distance;
                 best_fg = fg;
                 best_bg = bg;
                 best_mix = mix;
+                for (i = 0; i<3; i++)
+                  best_rgb[i] = resrgb[i];
               }
           }
+    /* change to other equivalents that seems to behave better than
+     * their correspondent
+     */
     if (best_mix <= 0.0) /* prefer to draw blocks than to not do so */
       {
         int tmp = best_fg;
@@ -94,14 +122,26 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
         best_bg = tmp;
         best_mix = 1.0-best_mix;
       }
-    if (best_bg == 0 && best_mix <= 0.0)
+      if (best_fg == 0 && best_mix >=1.0 )
       {
-        best_fg = 7;
         best_bg = 0;
-        best_mix = 0;
+        best_fg = 7;
+        best_mix = 0.0;
       }
+  if (dither)
+    {
+      int i;
+      for (i = 0; i < 3; i++)
+        {
+          float delta = (sum[i] - best_rgb[i]);
+          error[i] = delta * 0.25;
+          rowerror[x][i] += delta * 0.25;
+          if (x>0)
+            rowerror[x-1][i] += delta * 0.25;
+          rowerror[x+1][i] += delta * 0.25;
+        }
+    }
 
-    //best_distance = 1000;
   int bestbits = 0;
   {
     int totbits;
@@ -125,7 +165,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
             distance += sqrt (POW2(br[i] - r[i])+
                               POW2(bg[i] - g[i])+
                               POW2(bb[i] - b[i]));
-#define GEOM_FACTOR  0.28
+          float GEOM_FACTOR = (1.1 - crispness) / 3;
           if (distance/4 * GEOM_FACTOR < best_distance)
             {
               best_distance = distance/4 * GEOM_FACTOR;
@@ -136,14 +176,14 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
   }
 
   /* XXX:
-   * do another pass checking 1/4th filled permutations,
-   * these should give better large curves.
+   * do another pass checking 1/4th filled permutations with the hbar/vbar
+   * bits.
    */
 
   nct_fg_color (n, best_fg);
   nct_bg_color (n, best_bg);
   if (use_geom)
-    nct_set (n, x, y, qblocks[bestbits]);
+    nct_set (n, x, y, quarter_blocks[bestbits]);
   else
     set_gray (n, x, y, best_mix);
   }
@@ -152,12 +192,16 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
 /*  draw a 32bit RGBA file,..
  */
 void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
-              unsigned char *buf, int rw, int rh)
+              unsigned char *buf, int rw, int rh,
+              int dither, float crispness)
 {
   int u, v;
 
   if (!buf)
     return;
+
+  memset (rowerror, 0, sizeof (rowerror));
+  memset (error, 0, sizeof (error));
 
   for (u = 0; u < w; u++)
     for (v = 0; v < h; v++)
@@ -177,11 +221,8 @@ void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
 
               float uo = 0.0, vo = 0.0;
               r[no]=g[no]=b[no]=0.0;
-              //for (uo = 0.0 ; uo <= 0.5; uo+= 0.1)
-              //for (vo = 0.0 ; vo <= 0.5; vo+= 0.1)
-              //
-              // using nearest neighbour is best for non photos..
-              // we do not want the added AA for crisp edges
+              for (uo = 0.0 ; uo <= 0.5; uo+= 0.1)   /* these increments should be adjusted */
+                for (vo = 0.0 ; vo <= 0.5; vo+= 0.1) /* according to scaling factor */
                   {
                     int x, y;
                     x = ((u+xo+uo) * 1.0 / w) * rw;
@@ -200,8 +241,21 @@ void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
               g[no] /= c;
               b[no] /= c;
             }
-        draw_rgb_cell (n, x0+u, y0+v, r, g, b);
+        draw_rgb_cell (n, x0+u, y0+v, r, g, b, dither, crispness);
       }
+}
+
+static int do_dither = 1;
+static float cfg_crisp = 0.5;
+
+void nct_set_dither (Nchanterm *n, int dither)
+{
+  do_dither = dither;
+}
+
+void nct_set_crispness (Nchanterm *n, float crispness)
+{
+  cfg_crisp = crispness;
 }
 
 void nct_image (Nchanterm *n, int x0, int y0, int w, int h, const char *path)
@@ -211,7 +265,7 @@ void nct_image (Nchanterm *n, int x0, int y0, int w, int h, const char *path)
   image = stbi_load (path, &rw, &rh, NULL, 4);
   if (!image)
     return;
-  nct_buf (n, x0, y0, w, h, image, rw, rh);
+  nct_buf (n, x0, y0, w, h, image, rw, rh, do_dither, cfg_crisp);
   free (image);
 }
 
@@ -225,10 +279,20 @@ int main (int argc, char **argv)
       printf ("usage:\nnchantview <imagefile>\n");
       return -1;
     }
+
+  if (argv[2])
+    {
+      nct_set_dither (NULL, atoi(argv[2]));
+      if (argv[3])
+          nct_set_crispness (NULL, atof(argv[3]));
+    }
+
+
   term = nct_new ();
   nct_clear (term);
   nct_image (term, 1, 1, nct_width (term), nct_height (term), argv[1]);
   nct_flush (term);
+  return 0;
 
   while (!quit)
     {
