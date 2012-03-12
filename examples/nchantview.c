@@ -13,8 +13,8 @@
 #if 1
 static char *quarter_blocks[]=
   {" ","▘","▝","▀","▖","▌","▞","▛","▗","▚","▐","▜","▄","▙","▟","█",
-    "▎","▊","▂","▆", 
-    "▎","▊","▂","▆", /* repeated, for the reverse video case */
+    "▎","▊","▂","▆", "▪", 
+    "▎","▊","▂","▆", "▪",/* repeated, for the reverse video case */
     NULL};
 static char *utf8_gray_scale[]={" ","░","▒","▓","█","█", NULL};
 #else
@@ -148,7 +148,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
   int bestbits = 0;
   {
     int totbits;
-    for (totbits = 0; totbits < 24; totbits++)
+    for (totbits = 0; totbits < 26; totbits++)
         {
           float br[16],bg[16],bb[16];
           int i, x, y;
@@ -205,9 +205,18 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                     bb[i] = (y!=0) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
                         }
                     break;
-
-
                   case 20:
+                    for (i = 0, y = 0; y < 4; y ++)
+                      for (x = 0; x < 4; x ++, i++)
+                        {
+                    br[i] = (x>0 && x<3 && y>0 && y<3) ? ((best_fg & 1) != 0) : ((best_bg & 1) != 0);
+                    bg[i] = (x>0 && x<3 && y>0 && y<3) ? ((best_fg & 2) != 0) : ((best_bg & 2) != 0);
+                    bb[i] = (x>0 && x<3 && y>0 && y<3) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
+                        }
+                    break;
+
+
+                  case 21:
                     for (i = 0, y = 0; y < 4; y ++)
                       for (x = 0; x < 4; x ++, i++)
                         {
@@ -216,7 +225,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                     bb[i] = (x!=0) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
                         }
                     break;
-                  case 21:
+                  case 22:
                     for (i = 0, y = 0; y < 4; y ++)
                       for (x = 0; x < 4; x ++, i++)
                         {
@@ -225,7 +234,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                     bb[i] = (x==3) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
                         }
                     break;
-                  case 22:
+                  case 23:
                     for (i = 0, y = 0; y < 4; y ++)
                       for (x = 0; x < 4; x ++, i++)
                         {
@@ -235,13 +244,22 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                         }
                         
                     break;
-                  case 23:
+                  case 24:
                     for (i = 0, y = 0; y < 4; y ++)
                       for (x = 0; x < 4; x ++, i++)
                         {
                     br[i] = (y==0) ? ((best_fg & 1) != 0) : ((best_bg & 1) != 0);
                     bg[i] = (y==0) ? ((best_fg & 2) != 0) : ((best_bg & 2) != 0);
                     bb[i] = (y==0) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
+                        }
+                    break;
+                  case 25:
+                    for (i = 0, y = 0; y < 4; y ++)
+                      for (x = 0; x < 4; x ++, i++)
+                        {
+                    br[i] = (!(x>0 && x<3 && y>0 && y<3)) ? ((best_fg & 1) != 0) : ((best_bg & 1) != 0);
+                    bg[i] = (!(x>0 && x<3 && y>0 && y<3)) ? ((best_fg & 2) != 0) : ((best_bg & 2) != 0);
+                    bb[i] = (!(x>0 && x<3 && y>0 && y<3)) ? ((best_fg & 4) != 0) : ((best_bg & 4) != 0);
                         }
                     break;
 
@@ -273,7 +291,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
    * bits.
    */
 
-  if (use_geom && bestbits >= 20)
+  if (use_geom && bestbits >= 21)
     {
       nct_fg_color (n, best_bg);
       nct_bg_color (n, best_fg);
