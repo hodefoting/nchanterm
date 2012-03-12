@@ -516,7 +516,11 @@ void nct_get_cursor_pos (Nchanterm *n, int *x, int *y)
 #include <errno.h>
 #include <signal.h>
 
-#define DELAY_MS  100  /* internal select timeout for inputs */
+#define DELAY_MS  100  /* internal select timeout for inputs, this
+                         is the minimal resolution possible to use -
+                         this also causes this many wakeups per second
+                         for the process..
+                       */
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -823,7 +827,7 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
           size_changed = 0;
           return "size-changed";
         }
-      got_event = nct_has_event (n, DELAY_MS);
+      got_event = nct_has_event (n, MIN(DELAY_MS, timeoutms-elapsed));
       if (size_changed)
         {
           size_changed = 0;
@@ -832,7 +836,7 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
       /* only do this if the client has asked for idle events,
        * and perhaps programmed the ms timer?
        */
-      elapsed += DELAY_MS;
+      elapsed += MIN(DELAY_MS, timeoutms-elapsed);
       if (!got_event && timeoutms && elapsed >= timeoutms)
         return "idle";
     } while (!got_event);
