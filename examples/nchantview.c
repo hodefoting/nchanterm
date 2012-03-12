@@ -77,6 +77,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
 
     for (fg = 0; fg < 8; fg ++)
       for (bg = 0; bg < 8; bg ++)
+      {
         for (mix = 0.0; mix <= 1.0; mix+=0.25)
           {
             int frgb[3] = { (fg & 1)!=0,
@@ -105,6 +106,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
                   best_rgb[i] = resrgb[i];
               }
           }
+      }
     /* change to other equivalents that seems to behave better than
      * their correspondent
      */
@@ -165,7 +167,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
             distance += sqrt (POW2(br[i] - r[i])+
                               POW2(bg[i] - g[i])+
                               POW2(bb[i] - b[i]));
-          float GEOM_FACTOR = (1.1 - crispness) / 3;
+          float GEOM_FACTOR = (1.000001 - crispness) / 3;
           if (distance/4 * GEOM_FACTOR < best_distance)
             {
               best_distance = distance/4 * GEOM_FACTOR;
@@ -193,7 +195,7 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
  */
 void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
               unsigned char *buf, int rw, int rh,
-              int dither, float crispness)
+              int dither, float crispness, int mono)
 {
   int u, v;
 
@@ -240,13 +242,19 @@ void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
               r[no] /= c;
               g[no] /= c;
               b[no] /= c;
+              if (mono)
+                {
+                  float v = (r[no] + g[no] + b[no])/3;
+                  r[no] = g[no] = b[no] = v;
+                }
             }
         draw_rgb_cell (n, x0+u, y0+v, r, g, b, dither, crispness);
       }
 }
 
 static int do_dither = 1;
-static float cfg_crisp = 0.5;
+static int cfg_mono = 0;
+static float cfg_crisp = 0.3;
 
 void nct_set_dither (Nchanterm *n, int dither)
 {
@@ -258,6 +266,11 @@ void nct_set_crispness (Nchanterm *n, float crispness)
   cfg_crisp = crispness;
 }
 
+void nct_set_mono (Nchanterm *n, int mono)
+{
+  cfg_mono = mono;
+}
+
 void nct_image (Nchanterm *n, int x0, int y0, int w, int h, const char *path)
 {
   int rw, rh;
@@ -265,7 +278,7 @@ void nct_image (Nchanterm *n, int x0, int y0, int w, int h, const char *path)
   image = stbi_load (path, &rw, &rh, NULL, 4);
   if (!image)
     return;
-  nct_buf (n, x0, y0, w, h, image, rw, rh, do_dither, cfg_crisp);
+  nct_buf (n, x0, y0, w, h, image, rw, rh, do_dither, cfg_crisp, cfg_mono);
   free (image);
 }
 
@@ -284,7 +297,11 @@ int main (int argc, char **argv)
     {
       nct_set_dither (NULL, atoi(argv[2]));
       if (argv[3])
+        {
           nct_set_crispness (NULL, atof(argv[3]));
+          if (argv[4])
+            nct_set_mono (NULL, 1);
+        }
     }
 
 
@@ -292,7 +309,7 @@ int main (int argc, char **argv)
   nct_clear (term);
   nct_image (term, 1, 1, nct_width (term), nct_height (term), argv[1]);
   nct_flush (term);
-  return 0;
+  //return 0;
 
   while (!quit)
     {
