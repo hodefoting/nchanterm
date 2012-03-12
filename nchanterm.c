@@ -256,8 +256,12 @@ static void nct_ensure_mode (Nchanterm *n)
   if (n->mode & NCT_A_REVERSE)  { SEPERATOR; printf ("7"); }
   if (n->mode & NCT_A_UNDERLINE){ SEPERATOR; printf ("4"); }
   if (n->color != NCHANT_DEFAULT_COLORS)
-    { SEPERATOR; printf ("%i;%i", COLOR_FG(n->color)+30,
-                                  COLOR_BG(n->color)+40); }
+    { SEPERATOR; 
+      if (COLOR_BG(n->color) == 0)
+      printf ("%i", COLOR_FG(n->color)+30);
+      else
+      printf ("%i;%i", COLOR_FG(n->color)+30,
+                       COLOR_BG(n->color)+40); }
   if (data)
     printf(ANSI_STYLE_END);
 #undef SEPERATOR
