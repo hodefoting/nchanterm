@@ -26,11 +26,8 @@ static char *utf8_gray_scale[]={" ","^","X","W","%","M", NULL};
 static float rowerror[2000][3];
 static float error[3];
 
-static int frame = 0;
-
 static int do_dither = 1;
 static int cfg_mono = 0;
-static int cfg_temporal = 0;
 static float cfg_crisp = 0.2;
 
 void set_gray (Nchanterm *n, int x, int y, float value)
@@ -329,8 +326,8 @@ void nct_buf (Nchanterm *n, int x0, int y0, int w, int h,
                 for (vo = 0.0 ; vo <= 0.5; vo+= 0.2) /* according to scaling factor */
                   {
                     int x, y;
-                    x = ((u+xo+uo + ((frame^12345)%3)*(1.0/3)/3) * 1.0 / w) * rw;
-                    y = ((v+yo+vo + ((frame^12345)%7)*(1.0/7)/3) * 1.0 / h) * rh;
+                    x = ((u+xo+uo) * 1.0 / w) * rw;
+                    y = ((v+yo+vo) * 1.0 / h) * rh;
                     if (x<0) x = 0;
                     if (y<0) y = 0;
                     if (x>=rw) x = rw-1;
@@ -407,15 +404,11 @@ int main (int argc, char **argv)
   nct_clear (term);
   nct_image (term, 1, 1, nct_width (term), nct_height (term), argv[1]);
   nct_flush (term);
-  //return 0;
 
   while (!quit)
     {
       const char *event;
-      if (cfg_temporal)
-        event = nct_get_event (term, 10, NULL, NULL);
-      else
-        event = nct_get_event (term, 1000, NULL, NULL);
+      event = nct_get_event (term, 1000, NULL, NULL);
       if (!strcmp (event, "control-c")||
           !strcmp (event, "esc"))
         quit = 1;
@@ -429,13 +422,6 @@ int main (int argc, char **argv)
         }
       else if (!strcmp (event, "control-l"))
         nct_reflush (term);
-      else if (cfg_temporal)
-        {
-          nct_clear (term);
-          nct_image (term, 1, 1, nct_width (term), nct_height (term), argv[1]);
-          nct_flush (term);
-          frame ++;
-        }
     }
   nct_destroy (term);
   return 0;
