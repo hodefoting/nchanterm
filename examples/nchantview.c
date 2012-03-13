@@ -14,6 +14,8 @@
  * and remove geometry matching blocks
  */
 
+static char *utf8_gray_scale[]={" ","░","▒","▓","█","█", NULL};
+
 static char *quarter_blocks[]=
   {" ","▘","▝","▀","▖","▌","▞","▛","▗","▚","▐","▜","▄","▙","▟","█",
     "▏","▎","▍","▋","▊","▉","▁","▂","▃","▅","▆","▇","▪","━","┃","╋",
@@ -514,12 +516,11 @@ static uint64_t images[] = {
 11100111,
 };
 
-static char *utf8_gray_scale[]={" ","░","▒","▓","█","█", NULL};
 
 static float rowerror[2000][3];
 static float error[3];
 
-static int do_dither = 1;
+static int do_dither = 0;
 static int cfg_mono = 0;
 static float cfg_crisp = 0.1;
 
@@ -622,19 +623,6 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
     best_fg = 7;
     best_mix = 0.0;
   }
-  if (dither)
-    {
-      int i;
-      for (i = 0; i < 3; i++)
-        {
-          float delta = (sum[i] - best_rgb[i]);
-          error[i] = delta * 0.25;
-          rowerror[x][i] += delta * 0.25;
-          if (x>0)
-            rowerror[x-1][i] += delta * 0.25;
-          rowerror[x+1][i] += delta * 0.25;
-        }
-    }
 
   int bestbits = 0;
   {
@@ -671,17 +659,54 @@ static void draw_rgb_cell (Nchanterm *n, int x, int y,
             }
         }
   }
+  if (use_geom && bestbits >= 31) /* one of the patterns matching so that it
+                                     needs inverted fg/bg */
+    {
+      int tmp = best_fg;
+      best_fg = best_bg;
+      best_bg = tmp;
+    }
 
-  if (use_geom && bestbits >= 31)
+  if (dither)
     {
-      nct_fg_color (n, best_bg);
-      nct_bg_color (n, best_fg);
+      int i;
+
+      if (use_geom)
+        {
+          int bits_set = 0;
+          float mix;
+          int frgb[3] = { (best_fg & 1)!=0,
+                          (best_fg & 2)!=0,
+                          (best_fg & 4)!=0};
+          int brgb[3] = { (best_bg & 1)!=0,
+                          (best_bg & 2)!=0,
+                          (best_bg & 4)!=0};
+          for (i = 0; i < 64; i++)
+            if ((images[bestbits] >> i) & 1)
+              bits_set ++;
+
+          mix = (bits_set / 64.0);
+
+          for (i = 0; i < 3; i++)
+            {
+              best_rgb[i] = (frgb[i] * mix + brgb[i] * (1.0-mix)) ;
+            }
+        }
+
+      for (i = 0; i < 3; i++)
+        {
+          float delta = (sum[i] - best_rgb[i]);
+          error[i] = delta * 0.20;
+          rowerror[x][i] += delta * 0.20;
+          if (x>0)
+            rowerror[x-1][i] += delta * 0.20;
+          rowerror[x+1][i] += delta * 0.20;
+        }
     }
-  else
-    {
-      nct_fg_color (n, best_fg);
-      nct_bg_color (n, best_bg);
-    }
+
+  nct_fg_color (n, best_fg);
+  nct_bg_color (n, best_bg);
+
   if (use_geom)
     nct_set (n, x, y, quarter_blocks[bestbits]);
   else
