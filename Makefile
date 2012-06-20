@@ -9,6 +9,7 @@ TARGETS = $(LIBNAME).a $(LIBNAME).$(LIBEXT)
 CFLAGS += -I.. -I. 
 CFLAGS += -O2 -g
 CFLAGS += -Wall
+CFLAGS += -fPIC
 
 all: $(TARGETS)
 
