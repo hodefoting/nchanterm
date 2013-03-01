@@ -254,7 +254,7 @@ static void nct_ensure_mode (Nchanterm *n)
 #define SEPERATOR  { if (!data) { printf(ANSI_STYLE_START); data = 1;} \
                      if (first) first=0; else printf (";");}
   if (n->mode & NCT_A_BOLD)     { SEPERATOR; printf ("1"); }
-  if (n->mode & NCT_A_DIM)      { SEPERATOR; printf (n->is_st?"0":"1");}
+  if ((n->mode & NCT_A_DIM) && !n->is_st) { SEPERATOR; printf ("2");}
   if (n->mode & NCT_A_REVERSE)  { SEPERATOR; printf ("7"); }
   if (n->mode & NCT_A_UNDERLINE){ SEPERATOR; printf ("4"); }
   if (n->color != NCHANT_DEFAULT_COLORS)
