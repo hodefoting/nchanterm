@@ -21,7 +21,8 @@ Rationale
 Terminal emulators in use today mostly share the ANSI subset of control
 commands, terminals this statement applies to include:
 
-xterm, putty, linux console, vte (gnome-terminal etc), Eterm, screen and more.
+Eterm, linux console, putty, rxvt, screen, st, tmux, vte (gnome-terminal),
+xterm and probably more.
 
 Even though they support a wide range of different commands, manipulating the
 character grid as well as initiating mouse-event can be achieved through a
