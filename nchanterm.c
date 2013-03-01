@@ -167,9 +167,11 @@ struct _Nchanterm {
   int      cursor_x;
   int      cursor_y;
   int      utf8;
+  int      is_st;
 };
 
-/* a quite minimal core set of commands are used */
+/* a quite minimal core set of terminal escape sequences are used to do all
+ * things nchanterm can do */
 #define ANSI_RESET_DEVICE        "\ec"
 #define ANSI_YX                  "\e[%d;%dH"
 #define ANSI_CURSOR_FORWARD      "\e[%dC"
@@ -252,7 +254,7 @@ static void nct_ensure_mode (Nchanterm *n)
 #define SEPERATOR  { if (!data) { printf(ANSI_STYLE_START); data = 1;} \
                      if (first) first=0; else printf (";");}
   if (n->mode & NCT_A_BOLD)     { SEPERATOR; printf ("1"); }
-  if (n->mode & NCT_A_DIM)      { SEPERATOR; printf ("2"); }
+  if (n->mode & NCT_A_DIM)      { SEPERATOR; printf (n->is_st?"0":"1");}
   if (n->mode & NCT_A_REVERSE)  { SEPERATOR; printf ("7"); }
   if (n->mode & NCT_A_UNDERLINE){ SEPERATOR; printf ("4"); }
   if (n->color != NCHANT_DEFAULT_COLORS)
@@ -482,12 +484,16 @@ Nchanterm *nct_new  (void)
 {
   Nchanterm *term = calloc (sizeof (Nchanterm), 1);
   const char *locale = setlocale (LC_ALL, "");
-  const char *eterm  = getenv ("TERM");
+  const char *term_env  = getenv ("TERM");
   if (strstr (locale, "utf8")  || strstr (locale, "UTF8")  ||
       strstr (locale, "UTF-8") || strstr (locale, "utf-8"))
     term->utf8 = 1;
-  if (strstr (eterm,  "Eterm"))
+  if (strstr (term_env,  "Eterm"))
     term->utf8 = 0;
+
+  /* some special casing to avoid sending unknown commands to st  */
+  if (!strcmp (term_env, "st-256color") || !strcmp (term_env, "st"))
+    term->is_st = 1;
   nct_set_size (term, nct_sys_terminal_width (), nct_sys_terminal_height ());
   return term;
 }
@@ -637,7 +643,7 @@ static const NcKeyCode keycodes[]={
   {"control-i", "^I",  {9,0}},
   {"control-j", "^J",  {10,0}},
   {"control-k", "^K",  {11,0}},
-  {"control-l", "^L",  {12, 0}},
+  {"control-l", "^L",  {12,0}},
   {"control-n", "^N",  {14,0}},
   {"control-o", "^O",  {15,0}},
   {"control-p", "^P",  {16,0}},
@@ -976,6 +982,8 @@ const char *nct_key_get_label (Nchanterm *n, const char *nick)
 
 void nct_mouse (Nchanterm *term, int mode)
 {
+  if (term->is_st && mode > 1)
+    mode = 1;
   if (mode != mouse_mode)
     printf (mouse_modes[mode]);
   mouse_mode = mode;
