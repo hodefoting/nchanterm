@@ -128,6 +128,7 @@ void nct_mouse           (Nchanterm *term, int nct_mouse_state);
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <termio.h>
 #include <locale.h>
 
 int nct_sys_terminal_width (void)
