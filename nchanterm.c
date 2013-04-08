@@ -627,6 +627,7 @@ static const NcKeyCode keycodes[]={
   {"F11",       "F11", "\e[22~"},
   {"F12",       "F12", "\e[23~"},
   {"tab",       "↹",  {9, '\0'}},
+  {"shift-tab", "shift+↹",  "\e[Z"},
   {"backspace", "⌫",  {127, '\0'}},
   {"space",     "␣",   " "},
   {"esc",        "␛",  "\e"},
