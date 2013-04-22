@@ -1,7 +1,7 @@
 CFILES  = $(wildcard *.c)
 OBJS    = $(CFILES:.c=.o)
-PROJNAME = nchanterm
-LIBNAME = lib$(PROJNAME)
+PROJECT_NAME = nchanterm
+LIBNAME = lib$(PROJECT_NAME)
 PREFIX = /usr/local
 LIBEXT  = so
 TARGETS = $(LIBNAME).a $(LIBNAME).$(LIBEXT)
@@ -33,6 +33,6 @@ clean:
 
 install: $(LIBNAME).$(LIBEXT)
 	sudo install -t $(PREFIX)/lib $(LIBNAME).$(LIBEXT)
-	sudo install -t $(PREFIX)/lib/pkgconfig $(PROJNAME).pc
-	sudo install -d $(PREFIX)/include/$(PROJNAME)
-	sudo install -t $(PREFIX)/include/$(PROJNAME) nchanterm.c nchanterm.h
+	sudo install -t $(PREFIX)/lib/pkgconfig $(PROJECT_NAME).pc
+	sudo install -d $(PREFIX)/include/$(PROJECT_NAME)
+	sudo install -t $(PREFIX)/include/$(PROJECT_NAME) nchanterm.c nchanterm.h

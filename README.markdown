@@ -1,15 +1,16 @@
 nchanterm
----------
+=========
 
 UTF-8 ANSI/vt102 text mode interface.
 
 Features:
-  UTF8 native
-  Color, underline, bold
-  Mouse and keyboard events
-  Internally keeps track of terminal state and only does delta updates.
-  Liberal license ISC which is equivalent to MIT but with a simplified language.
-  Single .c file that can be dropped into a project to gain text mode
+---------
+  - UTF8 native
+  - Color, underline, bold
+  - Mouse and keyboard events
+  - Internally keeps track of terminal state and only does delta updates.
+  - Liberal license ISC which is equivalent to MIT but with a simplified language.
+  - Single .c file that can be dropped into a project to gain text mode
   capabilities.
 
 The API provided is the smallest core needed to drive an application, higher
