@@ -844,11 +844,6 @@ int nct_has_event (Nchanterm *n, int delay_ms)
 
 static const char *mouse_get_event_int (Nchanterm *n, int *x, int *y)
 {
-  /* XXX: since the resolution of motion event received is high, we
-   *      should collapse motion events in has_event, and cache only
-   *      new motion coordinates for delivery in _get_event */
-
-  /* XXX: implement heeding of set mouse policy */
   static int prev_state = 0;
   const char *ret = "mouse-motion";
   float relx, rely;
@@ -913,6 +908,10 @@ static int mouse_has_event (Nchanterm *n)
   struct timeval tv;
   int retval;
 
+  if (mouse_mode == NC_MOUSE_NONE)
+    return 0;
+
+
   if (mev_q)
     return 1;
 
@@ -929,23 +928,17 @@ static int mouse_has_event (Nchanterm *n)
     {
       int nx = 0, ny = 0;
       const char *type = mouse_get_event_int (n, &nx, &ny);
-      if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse-motion"))
+
+      if ((mouse_mode < NC_MOUSE_DRAG && mev_type && !strcmp (mev_type, "drag")) ||
+          (mouse_mode < NC_MOUSE_ALL && mev_type && !strcmp (mev_type, "motion")))
         {
-          if (nx == mev_x && ny == mev_y)
-          {
-            mev_q = 0;
-            return mouse_has_event (n);
-          }
+          mev_q = 0;
+          return mouse_has_event (n);
         }
-      else if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse1-drag"))
-        {
-          if (nx == mev_x && ny == mev_y)
-          {
-            mev_q = 0;
-            return mouse_has_event (n);
-          }
-        }
-      else if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse2-drag"))
+
+      if ((mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse-motion")) ||
+         (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse1-drag")) ||
+         (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse2-drag")))
         {
           if (nx == mev_x && ny == mev_y)
           {
