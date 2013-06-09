@@ -94,8 +94,8 @@ void nct_get_cursor_pos      (Nchanterm *term, int *x, int *y);
  *
  *  "size-changed"   - the geometry of the terminal has changed
  *  "mouse-pressed"  - the left mouse button was clicked
- *  "mouse-motion"   - motion events (level of motion event reporting
- *                    should be configurable)
+ *  "mouse-drag"     - the left mouse button was clicked
+ *  "mouse-motion"   - motion events (also after release)
  *  "idle"           - timeout elapsed.
  *  keys: "up" "down" "space" "control-left" "return" "esc" "a" "A"
  *        "control-a" "F1" "control-c" ...
@@ -128,8 +128,12 @@ void nct_mouse           (Nchanterm *term, int nct_mouse_state);
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <termio.h>
 #include <locale.h>
+#include <fcntl.h>
 
 int nct_sys_terminal_width (void)
 {
@@ -167,6 +171,9 @@ struct _Nchanterm {
   int      height;
   int      cursor_x;
   int      cursor_y;
+  float    mouse_x;
+  float    mouse_y;
+  int      mouse_fd;
   int      utf8;
   int      is_st;
 };
@@ -241,6 +248,8 @@ int nct_height (Nchanterm *n)
 #define COLOR_BG(p)           (((int)p)%8)
 #define NCHANT_DEFAULT_COLORS (COLOR_PAIR(NCT_COLOR_WHITE, NCT_COLOR_BLACK))
 
+/* emit minimal(few at least) escape characters to bring terminal from known
+ * current mode to desired mode. */
 static void nct_ensure_mode (Nchanterm *n)
 {
   int first = 1;
@@ -316,7 +325,7 @@ int nct_print (Nchanterm *n, int x, int y, const char *string, int utf8_length)
   return pos;
 }
 
-static void nct_cells_cls (Nchanterm *n)
+static void nct_cells_clear (Nchanterm *n)
 {
   int i;
   for (i = 0; i < n->cells_width * n->cells_height; i ++)
@@ -332,10 +341,10 @@ void nct_clear (Nchanterm *n)
 {
   n->color = NCHANT_DEFAULT_COLORS;
   nct_set_attr (n, NCT_A_NORMAL);
-  nct_cells_cls (n);
+  nct_cells_clear (n);
 }
 
-static void nct_cells_cls_front (Nchanterm *n)
+static void nct_cells_clear_front (Nchanterm *n)
 {
   int i;
   for (i = 0; i < n->cells_width * n->cells_height; i ++)
@@ -356,8 +365,8 @@ static void nct_cells_ensure (Nchanterm *n)
       n->cells_height = h;
       n->cells_front = calloc (sizeof (NcCell) * n->cells_width * n->cells_height, 1);
       n->cells_back  = calloc (sizeof (NcCell) * n->cells_width * n->cells_height, 1);
-      nct_cells_cls (n);
-      nct_cells_cls_front (n);
+      nct_cells_clear (n);
+      nct_cells_clear_front (n);
     }
 }
 
@@ -428,7 +437,7 @@ void nct_flush (Nchanterm *n)
   if (had_full <=0)
     {
       had_full = 40; // do a full refresh every now and then.
-      nct_cells_cls_front (n);
+      nct_cells_clear_front (n);
     }
   else
     {
@@ -438,8 +447,22 @@ void nct_flush (Nchanterm *n)
   for (y = 1; y <= h; y ++)
     for (x = 1; x <= w; x ++)
       {
+
         NcCell *back  = nct_get_cell (n, x, y);
         NcCell *front = nct_get_front_cell (n, x, y);
+
+        /* draw cursor, if any */
+        NcCell  cursor = {"!", 0, NCT_COLOR_WHITE};
+        if (n->mouse_fd != -1)
+          if (x == (int)n->mouse_x && y == (int)n->mouse_y)
+          {
+            strcpy (cursor.str, back->str);
+            cursor.color = back->color / 8;
+            cursor.color += back->color % 8;
+            cursor.attr = back->attr;
+            back = &cursor;
+          }
+
 
         if (memcmp (back, front, sizeof (NcCell)))
           {
@@ -475,9 +498,9 @@ void nct_flush (Nchanterm *n)
   fflush (NULL);
 }
 
-void nct_reflush             (Nchanterm *n)
+void nct_reflush (Nchanterm *n)
 {
-  nct_cells_cls_front (n);
+  nct_cells_clear_front (n);
   nct_flush (n);
 }
 
@@ -496,11 +519,25 @@ Nchanterm *nct_new  (void)
   if (!strcmp (term_env, "st-256color") || !strcmp (term_env, "st"))
     term->is_st = 1;
   nct_set_size (term, nct_sys_terminal_width (), nct_sys_terminal_height ());
+
+  if (strstr (term_env, "linux"))
+    term->mouse_fd = open ("/dev/input/mice", O_RDWR | O_NONBLOCK);
+  else
+    term->mouse_fd = -1;
+
+  if (term->mouse_fd != -1)
+    {
+      unsigned char reset = 0xff;
+      write (term->mouse_fd, &reset, 1); /* send a reset */
+    }
+
   return term;
 }
 
-void nct_destroy  (Nchanterm *n)
+void nct_destroy (Nchanterm *n)
 {
+  if (n->mouse_fd != -1)
+    close (n->mouse_fd);
   free (n);
 }
 
@@ -523,11 +560,7 @@ void nct_get_cursor_pos (Nchanterm *n, int *x, int *y)
 #include <errno.h>
 #include <signal.h>
 
-#define DELAY_MS  100  /* internal select timeout for inputs, this
-                         is the minimal resolution possible to use -
-                         this also causes this many wakeups per second
-                         for the process..
-                       */
+#define DELAY_MS  100  
 
 #ifndef MIN
 #define MIN(a,b) (((a)<(b))?(a):(b))
@@ -546,9 +579,9 @@ static const char *mouse_modes[]=
 /* note that a nick can have multiple occurences, the labels
  * should be kept the same for all occurences of a combination. */
 typedef struct NcKeyCode {
-  char *nick;          /* programmers name for key */
+  char *nick;          /* programmers name for key (combo) */
   char *label;         /* utf8 label for key */
-    char  sequence[10];  /* terminal sequence */
+  char  sequence[10];  /* terminal sequence */
 } NcKeyCode;
 static const NcKeyCode keycodes[]={  
   {"up",                  "↑",     "\e[A"},
@@ -808,10 +841,132 @@ int nct_has_event (Nchanterm *n, int delay_ms)
   return retval == 1 && retval != -1;
 }
 
+
+static const char *mouse_get_event_int (Nchanterm *n, int *x, int *y)
+{
+  /* XXX: since the resolution of motion event received is high, we
+   *      should collapse motion events in has_event, and cache only
+   *      new motion coordinates for delivery in _get_event */
+
+  /* XXX: implement heeding of set mouse policy */
+  static int prev_state = 0;
+  const char *ret = "mouse-motion";
+  float relx, rely;
+  signed char buf[3];
+  read (n->mouse_fd, buf, 3);
+  relx = buf[1];
+  rely = -buf[2];
+
+  n->mouse_x += relx * 0.1;
+  n->mouse_y += rely * 0.1;
+
+  if (n->mouse_x < 1) n->mouse_x = 1;
+  if (n->mouse_y < 1) n->mouse_y = 1;
+  if (n->mouse_x >= n->width)  n->mouse_x = n->width;
+  if (n->mouse_y >= n->height) n->mouse_y = n->height;
+
+  if (x) *x = n->mouse_x;
+  if (y) *y = n->mouse_y;
+
+  if ((prev_state & 1) != (buf[0] & 1))
+    {
+      if (buf[0] & 1) ret = "mouse-press";
+    }
+  else if (buf[0] & 1)
+    ret = "mouse-drag";
+
+  if ((prev_state & 2) != (buf[0] & 2))
+    {
+      if (buf[0] & 2) ret = "mouse2-press";
+    }
+  else if (buf[0] & 2)
+    ret = "mouse2-drag";
+
+  if ((prev_state & 4) != (buf[0] & 4))
+    {
+      if (buf[0] & 4) ret = "mouse1-press";
+    }
+  else if (buf[0] & 4)
+    ret = "mouse1-drag";
+
+  prev_state = buf[0];
+  return ret;
+}
+
+static const char *mev_type = NULL;
+static int         mev_x = 0;
+static int         mev_y = 0;
+static int         mev_q = 0;
+
+static const char *mouse_get_event (Nchanterm *n, int *x, int *y)
+{
+  if (!mev_q)
+    return NULL;
+  *x = mev_x;
+  *y = mev_y;
+  mev_q = 0;
+  return mev_type;
+}
+
+static int mouse_has_event (Nchanterm *n)
+{
+  struct timeval tv;
+  int retval;
+
+  if (mev_q)
+    return 1;
+
+  if (n->mouse_fd == -1)
+    return 0;
+
+  fd_set rfds;
+  FD_ZERO (&rfds);
+  FD_SET(n->mouse_fd, &rfds);
+  tv.tv_sec = 0; tv.tv_usec = 0;
+  retval = select (n->mouse_fd+1, &rfds, NULL, NULL, &tv);
+
+  if (retval != 0)
+    {
+      int nx = 0, ny = 0;
+      const char *type = mouse_get_event_int (n, &nx, &ny);
+      if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse-motion"))
+        {
+          if (nx == mev_x && ny == mev_y)
+          {
+            mev_q = 0;
+            return mouse_has_event (n);
+          }
+        }
+      else if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse1-drag"))
+        {
+          if (nx == mev_x && ny == mev_y)
+          {
+            mev_q = 0;
+            return mouse_has_event (n);
+          }
+        }
+      else if (mev_type && !strcmp (type, mev_type) && !strcmp (type, "mouse2-drag"))
+        {
+          if (nx == mev_x && ny == mev_y)
+          {
+            mev_q = 0;
+            return mouse_has_event (n);
+          }
+        }
+      mev_x = nx;
+      mev_y = ny;
+      mev_type = type;
+      mev_q = 1;
+    }
+  return retval != 0;
+}
+
+
 const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
 {
   unsigned char buf[20];
   int length;
+
 
   if (x) *x = -1;
   if (y) *y = -1;
@@ -835,7 +990,9 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
           size_changed = 0;
           return "size-changed";
         }
-      got_event = nct_has_event (n, MIN(DELAY_MS, timeoutms-elapsed));
+      got_event = mouse_has_event (n);
+      if (!got_event)
+        got_event = nct_has_event (n, MIN(DELAY_MS, timeoutms-elapsed));
       if (size_changed)
         {
           size_changed = 0;
@@ -849,6 +1006,9 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
         return "idle";
     } while (!got_event);
   }
+
+  if (mouse_has_event (n))
+    return mouse_get_event (n, x, y);
 
   for (length = 0; length < 10; length ++)
     if (read (STDIN_FILENO, &buf[length], 1) != -1)
@@ -945,21 +1105,13 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
                     return ret;
                   }
                 sprintf (ret, "unhandled %i:'%c' %i:'%c' %i:'%c' %i:'%c' %i:'%c' %i:'%c' %i:'%c'",
-                    length >=0 ? buf[0] : 0, 
-                    length >=0 ? buf[0]>31?buf[0]:'?' : ' ', 
-                    length >=1 ? buf[1] : 0, 
-                    length >=1 ? buf[1]>31?buf[1]:'?' : ' ', 
-                    length >=2 ? buf[2] : 0, 
-                    length >=2 ? buf[2]>31?buf[2]:'?' : ' ', 
-                    length >=3 ? buf[3] : 0, 
-                    length >=3 ? buf[3]>31?buf[3]:'?' : ' ',
-                    length >=4 ? buf[4] : 0, 
-                    length >=4 ? buf[4]>31?buf[4]:'?' : ' ',
-                    length >=5 ? buf[5] : 0, 
-                    length >=5 ? buf[5]>31?buf[5]:'?' : ' ',
-                    length >=6 ? buf[6] : 0, 
-                    length >=6 ? buf[6]>31?buf[6]:'?' : ' '
-                    );
+                  length>=0? buf[0]: 0, length>=0? buf[0]>31?buf[0]:'?': ' ', 
+                  length>=1? buf[1]: 0, length>=1? buf[1]>31?buf[1]:'?': ' ', 
+                  length>=2? buf[2]: 0, length>=2? buf[2]>31?buf[2]:'?': ' ', 
+                  length>=3? buf[3]: 0, length>=3? buf[3]>31?buf[3]:'?': ' ',
+                  length>=4? buf[4]: 0, length>=4? buf[4]>31?buf[4]:'?': ' ',
+                  length>=5? buf[5]: 0, length>=5? buf[5]>31?buf[5]:'?': ' ',
+                  length>=6? buf[6]: 0, length>=6? buf[6]>31?buf[6]:'?': ' ');
                 return ret;
               }
               return NULL;
