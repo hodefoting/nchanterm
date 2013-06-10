@@ -193,6 +193,8 @@ struct _Nchanterm {
 #define TERMINAL_MOUSE_ON_BASIC  "\e[?1000h"
 #define TERMINAL_MOUSE_ON_DRAG   "\e[?1000h\e[?1003h" /* +ON_BASIC for wider */
 #define TERMINAL_MOUSE_ON_FULL   "\e[?1000h\e[?1004h" /* compatibility */
+#define XTERM_ALTSCREEN_ON       "\e[?47h"
+#define XTERM_ALTSCREEN_OFF      "\e[?47l"
 
 void nct_show_cursor (Nchanterm *t)
 {
@@ -531,6 +533,7 @@ Nchanterm *nct_new  (void)
       write (term->mouse_fd, &reset, 1); /* send a reset */
     }
 
+  printf (XTERM_ALTSCREEN_ON);
   return term;
 }
 
@@ -763,10 +766,11 @@ static void _nc_noraw (void)
 static void
 nc_at_exit (void)
 {
-  printf(TERMINAL_MOUSE_OFF);
+  printf (TERMINAL_MOUSE_OFF);
   _nc_noraw();
   if (mouse_mode)
-    printf(TERMINAL_MOUSE_OFF);
+    printf (TERMINAL_MOUSE_OFF);
+  printf (XTERM_ALTSCREEN_OFF);
 }
 
 static int _nc_raw (void)
