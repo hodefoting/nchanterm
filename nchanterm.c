@@ -509,9 +509,17 @@ Nchanterm *nct_new  (void)
   Nchanterm *term = calloc (sizeof (Nchanterm), 1);
   const char *locale = setlocale (LC_ALL, "");
   const char *term_env  = getenv ("TERM");
-  if (strstr (locale, "utf8")  || strstr (locale, "UTF8")  ||
-      strstr (locale, "UTF-8") || strstr (locale, "utf-8"))
-    term->utf8 = 1;
+  if (!term_env)
+    term_env = "";
+  if (locale)
+    {
+      if (strstr (locale, "utf8")  || strstr (locale, "UTF8")  ||
+          strstr (locale, "UTF-8") || strstr (locale, "utf-8"))
+        term->utf8 = 1;
+    }
+  else
+    term->utf8 = 1; /* assume utf8 capable if we do not get a locale */
+
   if (strstr (term_env,  "Eterm"))
     term->utf8 = 0;
 
