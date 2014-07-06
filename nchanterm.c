@@ -180,27 +180,33 @@ struct _Nchanterm {
 
 /* a quite minimal core set of terminal escape sequences are used to do all
  * things nchanterm can do */
-#define ANSI_RESET_DEVICE        "\ec"
-#define ANSI_YX                  "\e[%d;%dH"
-#define ANSI_CURSOR_FORWARD      "\e[%dC"
-#define ANSI_CURSOR_FORWARD1     "\e[C"
-#define ANSI_STYLE_RESET         "\e[m"
-#define ANSI_STYLE_START         "\e["
+#define ANSI_RESET_DEVICE        "\033c"
+#define ANSI_YX                  "\033[%d;%dH"
+#define ANSI_CURSOR_FORWARD      "\033[%dC"
+#define ANSI_CURSOR_FORWARD1     "\033[C"
+#define ANSI_STYLE_RESET         "\033[m"
+#define ANSI_STYLE_START         "\033["
 #define ANSI_STYLE_END           "m"
-#define DECTCEM_CURSOR_SHOW      "\e[?25h"
-#define DECTCEM_CURSOR_HIDE      "\e[?25l"
-#define TERMINAL_MOUSE_OFF       "\e[?1000l"
-#define TERMINAL_MOUSE_ON_BASIC  "\e[?1000h"
-#define TERMINAL_MOUSE_ON_DRAG   "\e[?1000h\e[?1003h" /* +ON_BASIC for wider */
-#define TERMINAL_MOUSE_ON_FULL   "\e[?1000h\e[?1004h" /* compatibility */
-#define XTERM_ALTSCREEN_ON       "\e[?47h"
-#define XTERM_ALTSCREEN_OFF      "\e[?47l"
+#define DECTCEM_CURSOR_SHOW      "\033[?25h"
+#define DECTCEM_CURSOR_HIDE      "\033[?25l"
+#define TERMINAL_MOUSE_OFF       "\033[?1000l"
+#define TERMINAL_MOUSE_ON_BASIC  "\033[?1000h"
+#define TERMINAL_MOUSE_ON_DRAG   "\033[?1000h\033[?1003h" /* +ON_BASIC for wider */
+#define TERMINAL_MOUSE_ON_FULL   "\033[?1000h\033[?1004h" /* compatibility */
+#define XTERM_ALTSCREEN_ON       "\033[?47h"
+#define XTERM_ALTSCREEN_OFF      "\033[?47l"
 
-void nct_show_cursor (Nchanterm *t)
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
+#define UNUSED __attribute__((__unused__))
+#else
+#define UNUSED
+#endif
+
+void nct_show_cursor (Nchanterm UNUSED *t)
 {
   printf ("%s", DECTCEM_CURSOR_SHOW);
 }
-void nct_hide_cursor (Nchanterm *t)
+void nct_hide_cursor (Nchanterm UNUSED *t)
 {
   printf ("%s", DECTCEM_CURSOR_HIDE);
 }
@@ -595,86 +601,86 @@ typedef struct NcKeyCode {
   char  sequence[10];  /* terminal sequence */
 } NcKeyCode;
 static const NcKeyCode keycodes[]={  
-  {"up",                  "↑",     "\e[A"},
-  {"down",                "↓",     "\e[B"},
-  {"right",               "→",     "\e[C"},
-  {"left",                "←",     "\e[D"},
+  {"up",                  "↑",     "\033[A"},
+  {"down",                "↓",     "\033[B"},
+  {"right",               "→",     "\033[C"},
+  {"left",                "←",     "\033[D"},
 
-  {"shift-up",            "⇧↑",    "\e[1;2A"},
-  {"shift-down",          "⇧↓",    "\e[1;2B"},
-  {"shift-right",         "⇧→",    "\e[1;2C"},
-  {"shift-left",          "⇧←",    "\e[1;2D"},
+  {"shift-up",            "⇧↑",    "\033[1;2A"},
+  {"shift-down",          "⇧↓",    "\033[1;2B"},
+  {"shift-right",         "⇧→",    "\033[1;2C"},
+  {"shift-left",          "⇧←",    "\033[1;2D"},
 
-  {"alt-up",              "^↑",    "\e[1;3A"},
-  {"alt-down",            "^↓",    "\e[1;3B"},
-  {"alt-right",           "^→",    "\e[1;3C"},
-  {"alt-left",            "^←",    "\e[1;3D"},
+  {"alt-up",              "^↑",    "\033[1;3A"},
+  {"alt-down",            "^↓",    "\033[1;3B"},
+  {"alt-right",           "^→",    "\033[1;3C"},
+  {"alt-left",            "^←",    "\033[1;3D"},
 
-  {"alt-shift-up",        "alt-s↑", "\e[1;4A"},
-  {"alt-shift-down",      "alt-s↓", "\e[1;4B"},
-  {"alt-shift-right",     "alt-s→", "\e[1;4C"},
-  {"alt-shift-left",      "alt-s←", "\e[1;4D"},
+  {"alt-shift-up",        "alt-s↑", "\033[1;4A"},
+  {"alt-shift-down",      "alt-s↓", "\033[1;4B"},
+  {"alt-shift-right",     "alt-s→", "\033[1;4C"},
+  {"alt-shift-left",      "alt-s←", "\033[1;4D"},
 
-  {"control-up",          "^↑",    "\e[1;5A"},
-  {"control-down",        "^↓",    "\e[1;5B"},
-  {"control-right",       "^→",    "\e[1;5C"},
-  {"control-left",        "^←",    "\e[1;5D"},
+  {"control-up",          "^↑",    "\033[1;5A"},
+  {"control-down",        "^↓",    "\033[1;5B"},
+  {"control-right",       "^→",    "\033[1;5C"},
+  {"control-left",        "^←",    "\033[1;5D"},
 
   /* putty */
-  {"control-up",          "^↑",    "\eOA"},
-  {"control-down",        "^↓",    "\eOB"},
-  {"control-right",       "^→",    "\eOC"},
-  {"control-left",        "^←",    "\eOD"},
+  {"control-up",          "^↑",    "\033OA"},
+  {"control-down",        "^↓",    "\033OB"},
+  {"control-right",       "^→",    "\033OC"},
+  {"control-left",        "^←",    "\033OD"},
 
-  {"control-shift-up",    "^⇧↑",   "\e[1;6A"},
-  {"control-shift-down",  "^⇧↓",   "\e[1;6B"},
-  {"control-shift-right", "^⇧→",   "\e[1;6C"},
-  {"control-shift-left",  "^⇧←",   "\e[1;6D"},
+  {"control-shift-up",    "^⇧↑",   "\033[1;6A"},
+  {"control-shift-down",  "^⇧↓",   "\033[1;6B"},
+  {"control-shift-right", "^⇧→",   "\033[1;6C"},
+  {"control-shift-left",  "^⇧←",   "\033[1;6D"},
 
-  {"control-up",          "^↑",    "\eOa"},
-  {"control-down",        "^↓",    "\eOb"},
-  {"control-right",       "^→",    "\eOc"},
-  {"control-left",        "^←",    "\eOd"},
+  {"control-up",          "^↑",    "\033Oa"},
+  {"control-down",        "^↓",    "\033Ob"},
+  {"control-right",       "^→",    "\033Oc"},
+  {"control-left",        "^←",    "\033Od"},
 
-  {"shift-up",            "⇧↑",    "\e[a"},
-  {"shift-down",          "⇧↓",    "\e[b"},
-  {"shift-right",         "⇧→",    "\e[c"},
-  {"shift-left",          "⇧←",    "\e[d"},
+  {"shift-up",            "⇧↑",    "\033[a"},
+  {"shift-down",          "⇧↓",    "\033[b"},
+  {"shift-right",         "⇧→",    "\033[c"},
+  {"shift-left",          "⇧←",    "\033[d"},
 
-  {"insert",              "ins",   "\e[2~"},
-  {"delete",              "del",   "\e[3~"},
-  {"page-up",             "PgUp",  "\e[5~"},
-  {"page-down",           "PdDn",  "\e[6~"},
-  {"home",                "Home",  "\eOH"},
-  {"end",                 "End",   "\eOF"},
-  {"home",                "Home",  "\e[H"},
-  {"end",                 "End",   "\e[F"},
-  {"control-delete",      "^del",  "\e[3;5~"},
-  {"shift-delete",        "⇧del",  "\e[3;2~"},
-  {"control-shift-delete","^⇧del", "\e[3;6~"},
+  {"insert",              "ins",   "\033[2~"},
+  {"delete",              "del",   "\033[3~"},
+  {"page-up",             "PgUp",  "\033[5~"},
+  {"page-down",           "PdDn",  "\033[6~"},
+  {"home",                "Home",  "\033OH"},
+  {"end",                 "End",   "\033OF"},
+  {"home",                "Home",  "\033[H"},
+  {"end",                 "End",   "\033[F"},
+  {"control-delete",      "^del",  "\033[3;5~"},
+  {"shift-delete",        "⇧del",  "\033[3;2~"},
+  {"control-shift-delete","^⇧del", "\033[3;6~"},
 
-  {"F1",        "F1",  "\e[11~"},
-  {"F2",        "F2",  "\e[12~"},
-  {"F3",        "F3",  "\e[13~"},
-  {"F4",        "F4",  "\e[14~"},
-  {"F1",        "F1",  "\eOP"},
-  {"F2",        "F2",  "\eOQ"},
-  {"F3",        "F3",  "\eOR"},
-  {"F4",        "F4",  "\eOS"},
-  {"F5",        "F5",  "\e[15~"},
-  {"F6",        "F6",  "\e[16~"},
-  {"F7",        "F7",  "\e[17~"},
-  {"F8",        "F8",  "\e[18~"},
-  {"F9",        "F9",  "\e[19~"},
-  {"F9",        "F9",  "\e[20~"},
-  {"F10",       "F10", "\e[21~"},
-  {"F11",       "F11", "\e[22~"},
-  {"F12",       "F12", "\e[23~"},
+  {"F1",        "F1",  "\033[11~"},
+  {"F2",        "F2",  "\033[12~"},
+  {"F3",        "F3",  "\033[13~"},
+  {"F4",        "F4",  "\033[14~"},
+  {"F1",        "F1",  "\033OP"},
+  {"F2",        "F2",  "\033OQ"},
+  {"F3",        "F3",  "\033OR"},
+  {"F4",        "F4",  "\033OS"},
+  {"F5",        "F5",  "\033[15~"},
+  {"F6",        "F6",  "\033[16~"},
+  {"F7",        "F7",  "\033[17~"},
+  {"F8",        "F8",  "\033[18~"},
+  {"F9",        "F9",  "\033[19~"},
+  {"F9",        "F9",  "\033[20~"},
+  {"F10",       "F10", "\033[21~"},
+  {"F11",       "F11", "\033[22~"},
+  {"F12",       "F12", "\033[23~"},
   {"tab",       "↹",  {9, '\0'}},
-  {"shift-tab", "shift+↹",  "\e[Z"},
+  {"shift-tab", "shift+↹",  "\033[Z"},
   {"backspace", "⌫",  {127, '\0'}},
   {"space",     "␣",   " "},
-  {"esc",        "␛",  "\e"},
+  {"esc",        "␛",  "\033"},
   {"return",    "⏎",  {10,0}},
   {"return",    "⏎",  {13,0}},
   /* this section could be autogenerated by code */
@@ -703,60 +709,60 @@ static const NcKeyCode keycodes[]={
   {"control-x", "^X",  {24,0}},
   {"control-y", "^Y",  {25,0}},
   {"control-z", "^Z",  {26,0}},
-  {"alt-0",     "%0",  "\e0"},
-  {"alt-1",     "%1",  "\e1"},
-  {"alt-2",     "%2",  "\e2"},
-  {"alt-3",     "%3",  "\e3"},
-  {"alt-4",     "%4",  "\e4"},
-  {"alt-5",     "%5",  "\e5"},
-  {"alt-6",     "%6",  "\e6"},
-  {"alt-7",     "%7",  "\e7"}, /* backspace? */
-  {"alt-8",     "%8",  "\e8"},
-  {"alt-9",     "%9",  "\e9"},
-  {"alt-+",     "%+",  "\e+"},
-  {"alt--",     "%-",  "\e-"},
-  {"alt-/",     "%/",  "\e/"},
-  {"alt-a",     "%A",  "\ea"},
-  {"alt-b",     "%B",  "\eb"},
-  {"alt-c",     "%C",  "\ec"},
-  {"alt-d",     "%D",  "\ed"},
-  {"alt-e",     "%E",  "\ee"},
-  {"alt-f",     "%F",  "\ef"},
-  {"alt-g",     "%G",  "\eg"},
-  {"alt-h",     "%H",  "\eh"}, /* backspace? */
-  {"alt-i",     "%I",  "\ei"},
-  {"alt-j",     "%J",  "\ej"},
-  {"alt-k",     "%K",  "\ek"},
-  {"alt-l",     "%L",  "\el"},
-  {"alt-n",     "%N",  "\em"},
-  {"alt-n",     "%N",  "\en"},
-  {"alt-o",     "%O",  "\eo"},
-  {"alt-p",     "%P",  "\ep"},
-  {"alt-q",     "%Q",  "\eq"},
-  {"alt-r",     "%R",  "\er"},
-  {"alt-s",     "%S",  "\es"},
-  {"alt-t",     "%T",  "\et"},
-  {"alt-u",     "%U",  "\eu"},
-  {"alt-v",     "%V",  "\ev"},
-  {"alt-w",     "%W",  "\ew"},
-  {"alt-x",     "%X",  "\ex"},
-  {"alt-y",     "%Y",  "\ey"},
-  {"alt-z",     "%Z",  "\ez"},
+  {"alt-0",     "%0",  "\0330"},
+  {"alt-1",     "%1",  "\0331"},
+  {"alt-2",     "%2",  "\0332"},
+  {"alt-3",     "%3",  "\0333"},
+  {"alt-4",     "%4",  "\0334"},
+  {"alt-5",     "%5",  "\0335"},
+  {"alt-6",     "%6",  "\0336"},
+  {"alt-7",     "%7",  "\0337"}, /* backspace? */
+  {"alt-8",     "%8",  "\0338"},
+  {"alt-9",     "%9",  "\0339"},
+  {"alt-+",     "%+",  "\033+"},
+  {"alt--",     "%-",  "\033-"},
+  {"alt-/",     "%/",  "\033/"},
+  {"alt-a",     "%A",  "\033a"},
+  {"alt-b",     "%B",  "\033b"},
+  {"alt-c",     "%C",  "\033c"},
+  {"alt-d",     "%D",  "\033d"},
+  {"alt-e",     "%E",  "\033e"},
+  {"alt-f",     "%F",  "\033f"},
+  {"alt-g",     "%G",  "\033g"},
+  {"alt-h",     "%H",  "\033h"}, /* backspace? */
+  {"alt-i",     "%I",  "\033i"},
+  {"alt-j",     "%J",  "\033j"},
+  {"alt-k",     "%K",  "\033k"},
+  {"alt-l",     "%L",  "\033l"},
+  {"alt-n",     "%N",  "\033m"},
+  {"alt-n",     "%N",  "\033n"},
+  {"alt-o",     "%O",  "\033o"},
+  {"alt-p",     "%P",  "\033p"},
+  {"alt-q",     "%Q",  "\033q"},
+  {"alt-r",     "%R",  "\033r"},
+  {"alt-s",     "%S",  "\033s"},
+  {"alt-t",     "%T",  "\033t"},
+  {"alt-u",     "%U",  "\033u"},
+  {"alt-v",     "%V",  "\033v"},
+  {"alt-w",     "%W",  "\033w"},
+  {"alt-x",     "%X",  "\033x"},
+  {"alt-y",     "%Y",  "\033y"},
+  {"alt-z",     "%Z",  "\033z"},
   /* Linux Console  */
-  {"home",      "Home", "\e[1~"},
-  {"end",       "End",  "\e[4~"},
-  {"F1",        "F1",   "\e[[A"},
-  {"F2",        "F2",   "\e[[B"},
-  {"F3",        "F3",   "\e[[C"},
-  {"F4",        "F4",   "\e[[D"},
-  {"F5",        "F5",   "\e[[E"},
-  {"F6",        "F6",   "\e[[F"},
-  {"F7",        "F7",   "\e[[G"},
-  {"F8",        "F8",   "\e[[H"},
-  {"F9",        "F9",   "\e[[I"},
-  {"F10",       "F10",  "\e[[J"},
-  {"F11",       "F11",  "\e[[K"},
-  {"F12",       "F12",  "\e[[L"}, 
+  {"home",      "Home", "\033[1~"},
+  {"end",       "End",  "\033[4~"},
+  {"F1",        "F1",   "\033[[A"},
+  {"F2",        "F2",   "\033[[B"},
+  {"F3",        "F3",   "\033[[C"},
+  {"F4",        "F4",   "\033[[D"},
+  {"F5",        "F5",   "\033[[E"},
+  {"F6",        "F6",   "\033[[F"},
+  {"F7",        "F7",   "\033[[G"},
+  {"F8",        "F8",   "\033[[H"},
+  {"F9",        "F9",   "\033[[I"},
+  {"F10",       "F10",  "\033[[J"},
+  {"F11",       "F11",  "\033[[K"},
+  {"F12",       "F12",  "\033[[L"}, 
   {NULL, }
 };
 
@@ -801,7 +807,8 @@ static int _nc_raw (void)
   if (tcsetattr (STDIN_FILENO, TCSAFLUSH, &raw) < 0)
     return -1;
   nc_is_raw = 1;
-  fflush (NULL);
+  tcdrain(STDIN_FILENO);
+  tcflush(STDIN_FILENO, 1);
   return 0;
 }
 
@@ -810,7 +817,7 @@ static int match_keycode (const char *buf, int length, const NcKeyCode **ret)
   int i;
   int matches = 0;
 
-  if (!strncmp (buf, "\e[M", MIN(length,3)))
+  if (!strncmp (buf, "\033[M", MIN(length,3)))
     {
       if (length >= 6)
         return 9001;
@@ -820,7 +827,7 @@ static int match_keycode (const char *buf, int length, const NcKeyCode **ret)
     if (!strncmp (buf, keycodes[i].sequence, length))
       {
         matches ++;
-        if (strlen (keycodes[i].sequence) == length && ret)
+        if ((int)strlen (keycodes[i].sequence) == length && ret)
           {
             *ret = &keycodes[i];
             return 1;
@@ -831,12 +838,12 @@ static int match_keycode (const char *buf, int length, const NcKeyCode **ret)
   return matches==1?2:matches;
 }
 
-static void nc_resize_term (int dummy)
+static void nc_resize_term (int UNUSED dummy)
 {
   size_changed = 1;
 }
 
-int nct_has_event (Nchanterm *n, int delay_ms)
+int nct_has_event (Nchanterm UNUSED *n, int delay_ms)
 {
   struct timeval tv;
   int retval;
@@ -905,7 +912,7 @@ static int         mev_x = 0;
 static int         mev_y = 0;
 static int         mev_q = 0;
 
-static const char *mouse_get_event (Nchanterm *n, int *x, int *y)
+static const char *mouse_get_event (Nchanterm UNUSED *n, int *x, int *y)
 {
   if (!mev_q)
     return NULL;
@@ -922,7 +929,6 @@ static int mouse_has_event (Nchanterm *n)
 
   if (mouse_mode == NC_MOUSE_NONE)
     return 0;
-
 
   if (mev_q)
     return 1;
@@ -965,7 +971,6 @@ static int mouse_has_event (Nchanterm *n)
     }
   return retval != 0;
 }
-
 
 const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
 {
@@ -1129,7 +1134,7 @@ const char *nct_get_event (Nchanterm *n, int timeoutms, int *x, int *y)
   return "fail";
 }
 
-const char *nct_key_get_label (Nchanterm *n, const char *nick)
+const char *nct_key_get_label (Nchanterm UNUSED *n, const char *nick)
 {
   int j;
   int found = -1;
