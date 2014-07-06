@@ -1149,7 +1149,10 @@ void nct_mouse (Nchanterm *term, int mode)
   if (term->is_st && mode > 1)
     mode = 1;
   if (mode != mouse_mode)
+  {
     printf (mouse_modes[mode]);
+    fflush (stdout);
+  }
   mouse_mode = mode;
 }
 #endif
