@@ -936,11 +936,13 @@ static int mouse_has_event (Nchanterm *n)
   if (n->mouse_fd == -1)
     return 0;
 
-  fd_set rfds;
-  FD_ZERO (&rfds);
-  FD_SET(n->mouse_fd, &rfds);
-  tv.tv_sec = 0; tv.tv_usec = 0;
-  retval = select (n->mouse_fd+1, &rfds, NULL, NULL, &tv);
+  {
+    fd_set rfds;
+    FD_ZERO (&rfds);
+    FD_SET(n->mouse_fd, &rfds);
+    tv.tv_sec = 0; tv.tv_usec = 0;
+    retval = select (n->mouse_fd+1, &rfds, NULL, NULL, &tv);
+  }
 
   if (retval != 0)
     {
