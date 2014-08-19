@@ -251,10 +251,10 @@ int nct_height (Nchanterm *n)
   return n->height;
 } 
 
-#define COLOR_PAIR(f,b)       (f * 8 + b)
-#define COLOR_FG(p)           (((int)p)/8)
-#define COLOR_BG(p)           (((int)p)%8)
-#define NCHANT_DEFAULT_COLORS (COLOR_PAIR(NCT_COLOR_WHITE, NCT_COLOR_BLACK))
+#define NCT_COLOR_PAIR(f,b)   (f * 8 + b)
+#define NCT_COLOR_FG(p)       (((int)p)/8)
+#define NCT_COLOR_BG(p)       (((int)p)%8)
+#define NCHANT_DEFAULT_COLORS (NCT_COLOR_PAIR(NCT_COLOR_WHITE, NCT_COLOR_BLACK))
 
 /* emit minimal(few at least) escape characters to bring terminal from known
  * current mode to desired mode. */
@@ -277,11 +277,11 @@ static void nct_ensure_mode (Nchanterm *n)
   if (n->mode & NCT_A_UNDERLINE){ SEPERATOR; printf ("4"); }
   if (n->color != NCHANT_DEFAULT_COLORS)
     { SEPERATOR; 
-      if (COLOR_BG(n->color) == 0)
-      printf ("%i", COLOR_FG(n->color)+30);
+      if (NCT_COLOR_BG(n->color) == 0)
+      printf ("%i", NCT_COLOR_FG(n->color)+30);
       else
-      printf ("%i;%i", COLOR_FG(n->color)+30,
-                       COLOR_BG(n->color)+40); }
+      printf ("%i;%i", NCT_COLOR_FG(n->color)+30,
+                       NCT_COLOR_BG(n->color)+40); }
   if (data)
     printf(ANSI_STYLE_END);
 #undef SEPERATOR
@@ -300,13 +300,13 @@ int nct_get_attr (Nchanterm *n)
 
 void nct_fg_color (Nchanterm *n, int ncolor)
 {
-  n->color -= COLOR_FG (n->color) * 8;
+  n->color -= NCT_COLOR_FG (n->color) * 8;
   n->color += ncolor * 8;
 }
 
 void nct_bg_color (Nchanterm *n, int ncolor)
 {
-  n->color -= COLOR_BG (n->color);
+  n->color -= NCT_COLOR_BG (n->color);
   n->color += ncolor;
 }
 
